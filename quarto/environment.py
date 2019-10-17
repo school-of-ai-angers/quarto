@@ -8,13 +8,23 @@ class Environment:
         - Integer from 0 to 15 inclusive where the bit pattern indicates the characteristics
             example : piece 9 = 1001
 
+    Position :
+        - Integer from 0 to 15 inclusive :
+         0  1  2  3
+         4  5  6  7
+         8  9 10 11
+        12 13 14 15
+
+    Actions :
+        - Integer from 0 to 255 following the rule 16 * position + piece
+
     """
 
     def __init__(self):
         self.board_state = np.full((17,), -1)
         self.action_space = []
         self.available_pieces = []
-        self.available_positions = [] 
+        self.available_positions = []
         rows = [np.arange(4) + 4*l for l in range(4)]
         columns = [np.arange(16, step=4) + l for l in range(4)]
         diagonals = [np.array([0, 5, 10, 15]), np.array([3, 6, 9, 12])]
@@ -22,7 +32,7 @@ class Environment:
 
     def reset(self):
         self.board_state = np.full((17,), -1)
-        self.action_space = [(pos, piece) for pos in range(16) for piece in range(15)]
+        self.action_space = [16 * pos + piece for pos in range(16) for piece in range(15)]
         self.available_pieces = list(range(15))
         self.available_positions = list(range(16))
         self.board_state[16] = 15
@@ -43,20 +53,21 @@ class Environment:
         for line in self.lines:
             if self.has_common_trait(self.board_state[line]):
                 return 2
-        return 1 if len(self.available_positions)==0 else 0
-
+        return 1 if len(self.available_positions) == 0 else 0
 
     def step(self, action):
         assert action in self.action_space, "Invalid action was taken. Please check call to step"
+        action_pos = action // 16
+        action_piece = action % 16
 
         # Put the piece on the board
-        self.board_state[action[0]] = self.board_state[16]
-        self.available_positions.remove(action[0])
+        self.board_state[action_pos] = self.board_state[16]
+        self.available_positions.remove(action_pos)
 
         # Select the next piece for the opponent
-        self.board_state[16] = action[1]
-        self.available_pieces.remove(action[1])
-        
+        self.board_state[16] = action_piece
+        self.available_pieces.remove(action_piece)
+
         # Check the environment status
         status = self.get_board_status()
         done = status > 0
@@ -65,7 +76,7 @@ class Environment:
             return self.board_state, reward, done, []
 
         # Finalize the game if the last piece where chosen
-        if len(self.available_pieces)==0:
+        if len(self.available_pieces) == 0:
             last_position = self.available_positions[0]
             self.board_state[last_position] = self.board_state[16]
             self.available_positions.remove(last_position)
@@ -75,5 +86,5 @@ class Environment:
             return self.board_state, reward, True, []
 
         # update list of possible actions
-        self.action_space = [(pos, piece) for pos in self.available_positions for piece in self.available_pieces]
+        self.action_space = [16 * pos + piece for pos in self.available_positions for piece in self.available_pieces]
         return self.board_state, 0, done, self.action_space

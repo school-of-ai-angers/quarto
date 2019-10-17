@@ -36,21 +36,24 @@ def test_board_status():
 
     import numpy as np
 
+    def get_action(pos, piece):
+        return 16 * pos + piece
+
     # TODO : construct a draw game
     env.reset()
-    env.step((15, 10))
-    env.step((0, 5))
-    env.step((1, 7))
-    env.step((2, 8))
-    env.step((3, 9))
-    env.step((4, 11))
-    env.step((5, 1))
-    env.step((6, 4))
-    env.step((7, 3))
-    env.step((8, 12))
-    env.step((9, 0))
-    env.step((10, 14))
-    env.step((11, 6))
-    env.step((12, 2))
-    env.step((13, 13))
+    env.step(get_action(15, 10))
+    env.step(get_action(0, 5))
+    env.step(get_action(1, 7))
+    env.step(get_action(2, 8))
+    env.step(get_action(3, 9))
+    env.step(get_action(4, 11))
+    env.step(get_action(5, 1))
+    env.step(get_action(6, 4))
+    env.step(get_action(7, 3))
+    env.step(get_action(8, 12))
+    env.step(get_action(9, 0))
+    env.step(get_action(10, 14))
+    env.step(get_action(11, 6))
+    env.step(get_action(12, 2))
+    env.step(get_action(13, 13))
     assert env.get_board_status() == 1
