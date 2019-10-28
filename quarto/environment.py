@@ -1,5 +1,9 @@
 import numpy as np
 
+rows = [np.arange(4) + 4*l for l in range(4)]
+columns = [np.arange(16, step=4) + l for l in range(4)]
+diagonals = [np.array([0, 5, 10, 15]), np.array([3, 6, 9, 12])]
+
 
 class Environment:
 
@@ -7,28 +11,23 @@ class Environment:
     Pieces :
         - Integer from 0 to 15 inclusive where the bit pattern indicates the characteristics
             example : piece 9 = 1001
-
     Position :
         - Integer from 0 to 15 inclusive :
          0  1  2  3
          4  5  6  7
          8  9 10 11
         12 13 14 15
-
     Actions :
         - Integer from 0 to 255 following the rule 16 * position + piece
-
     """
+
+    lines = rows + columns + diagonals
 
     def __init__(self):
         self.board_state = np.full((17,), -1)
         self.action_space = []
         self.available_pieces = []
         self.available_positions = []
-        rows = [np.arange(4) + 4*l for l in range(4)]
-        columns = [np.arange(16, step=4) + l for l in range(4)]
-        diagonals = [np.array([0, 5, 10, 15]), np.array([3, 6, 9, 12])]
-        self.lines = rows + columns + diagonals
 
     def reset(self):
         self.board_state = np.full((17,), -1)
@@ -38,7 +37,8 @@ class Environment:
         self.board_state[16] = 15
         return self.board_state, self.action_space
 
-    def has_common_trait(self, pieces):
+    @staticmethod
+    def has_common_trait(pieces):
         assert len(pieces) == 4
         p1, p2, p3, p4 = pieces
         return p1 != -1 and p2 != -1 and p3 != -1 and p4 != -1 and ((p1 & p2 & p3 & p4) or ((~p1 & ~p2 & ~p3 & ~p4) & 0xF))
@@ -88,3 +88,57 @@ class Environment:
         # update list of possible actions
         self.action_space = [16 * pos + piece for pos in self.available_positions for piece in self.available_pieces]
         return self.board_state, 0, done, self.action_space
+
+    def to_jsonable(self):
+        """
+        Return a representation of the current state that can be encoded as JSON.
+        This will be used later to visually display the game state at each step
+        """
+        return self.board_state.tolist()
+
+    @staticmethod
+    def html_head():
+        """
+        Return HTML string to inject at the page's <head>
+        """
+        return '<link rel="stylesheet" href="/static/environment-quarto/style.css">'
+
+    @staticmethod
+    def jsonable_to_html(jsonable):
+        """
+        Return a HTML representation of the game at the given state
+        """
+
+        # Detect winning line
+        win_line = []
+        state = np.asarray(jsonable)
+        for line in Environment.lines:
+            if Environment.has_common_trait(state[line]):
+                win_line = line
+                break
+
+        # Build main board divs
+        main_board = '\n'.join(
+            f'<div class="quarto-position-{pos} {"quarto-piece-" + str(piece) if piece != -1 else ""} {"quarto-win-line" if pos in win_line else ""}">{pos}</div>'
+            for pos, piece in enumerate(jsonable)
+        )
+
+        # Build reserve divs
+        reserve_1 = '\n'.join(
+            f'<div class="quarto-piece-{i} col {"quarto-reserve-used" if i in jsonable else ""}">{i}</div>'
+            for i in range(0, 8)
+        )
+        reserve_2 = '\n'.join(
+            f'<div class="quarto-piece-{i} col {"quarto-reserve-used" if i in jsonable else ""}">{i}</div>'
+            for i in range(8, 16)
+        )
+
+        return f'''
+        <div class="quarto-board {"quarto-win" if len(win_line) else ""}">
+            {main_board}
+        </div>
+        <div class="quarto-reserve container">
+            <div class="row">{reserve_1}</div>
+            <div class="row my-2">{reserve_2}</div>
+        </div>
+        '''
