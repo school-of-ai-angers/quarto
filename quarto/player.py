@@ -72,3 +72,27 @@ class DummyPlayer(BasePlayer):
 
     def get_freezed(self):
         return DummyPlayer(False)
+
+class HumanPlayer(BasePlayer):
+    def __init__(self, env):
+        self.env = env
+
+    def start(self, state, valid_actions):
+        return self._ask_action()
+
+    def step(self, state, valid_actions, reward):
+        return self._ask_action()
+
+    def end(self, reward):
+        from IPython.display import clear_output, display
+        clear_output()
+        display(self.env)
+
+    def get_freezed(self):
+        raise NotImplementedError()
+
+    def _ask_action(self):
+        from IPython.display import clear_output, display
+        clear_output()
+        display(self.env)
+        return self.env.ask_action()
