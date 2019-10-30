@@ -45,7 +45,7 @@ class QLearningPlayer:
             self._update_q_table(reward + self.gamma * np.max(action_values))
         return self._take_action(state, valid_actions)
 
-    def end(self, reward):
+    def end(self, state, reward):
         # Last step: update the q-table and schedule the next value for epsilon
         # Here, the expected action-value is simply the final reward
         if self.train_mode:

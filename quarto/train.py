@@ -67,8 +67,8 @@ def run_match(env, player1, player2):
         state, reward_1, done, valid_actions = env.step(action)
         score += reward_1
         if done:
-            player1.end(reward_1)
-            player2.end(reward_2-reward_1)
+            player1.end(state, reward_1)
+            player2.end(state, reward_2-reward_1)
             return score
 
         # Player 2 turn
@@ -76,6 +76,6 @@ def run_match(env, player1, player2):
         state, reward_2, done, valid_actions = env.step(action)
         score -= reward_2
         if done:
-            player2.end(reward_2)
-            player1.end(reward_1-reward_2)
+            player2.end(state, reward_2)
+            player1.end(state, reward_1-reward_2)
             return score

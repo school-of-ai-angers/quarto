@@ -26,8 +26,9 @@ class BasePlayer:
         """
         raise NotImplementedError
 
-    def end(self, reward):
+    def end(self, state, reward):
         """
+        :param state: np.array
         :param reward: float
         """
         raise NotImplementedError
@@ -50,7 +51,7 @@ class RandomPlayer(BasePlayer):
     def step(self, state, valid_actions, reward):
         return np.random.choice(valid_actions)
 
-    def end(self, reward):
+    def end(self, state, reward):
         pass
 
     def get_freezed(self):
@@ -67,7 +68,7 @@ class DummyPlayer(BasePlayer):
     def step(self, state, valid_actions, reward):
         return valid_actions[0]
 
-    def end(self, reward):
+    def end(self, state, reward):
         pass
 
     def get_freezed(self):
@@ -83,7 +84,7 @@ class HumanPlayer(BasePlayer):
     def step(self, state, valid_actions, reward):
         return self._ask_action()
 
-    def end(self, reward):
+    def end(self, state, reward):
         from IPython.display import clear_output, display
         clear_output()
         display(self.env)
