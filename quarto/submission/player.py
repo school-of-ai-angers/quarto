@@ -70,7 +70,7 @@ class QLearningPlayer:
         # Store the current state, copying it, otherwise the environment could mutate it afterwards
         self.prev_state = state.copy()
 
-        if not self.train_mode or np.random.random() <= self.epsilon:
+        if self.train_mode and np.random.random() <= self.epsilon:
             # Take a random action
             self.prev_action = np.random.choice(valid_actions)
         else:
