@@ -74,6 +74,7 @@ class DummyPlayer(BasePlayer):
     def get_freezed(self):
         return DummyPlayer(False)
 
+
 class HumanPlayer(BasePlayer):
     def __init__(self, env):
         self.env = env
@@ -97,3 +98,27 @@ class HumanPlayer(BasePlayer):
         clear_output()
         display(self.env)
         return self.env.ask_action()
+
+
+class OpponentWrapper(BasePlayer):
+    def __init__(self, inner_player, epsilon):
+        self.inner_player = inner_player
+        self.epsilon = epsilon
+
+    def start(self, state, valid_actions):
+        inner_action = self.inner_player.start(state, valid_actions)
+        if np.random.random() <= self.epsilon:
+            return np.random.choice(valid_actions)
+        return inner_action
+
+    def step(self, state, valid_actions, reward):
+        inner_action = self.inner_player.step(state, valid_actions, reward)
+        if np.random.random() <= self.epsilon:
+            return np.random.choice(valid_actions)
+        return inner_action
+
+    def end(self, state, reward):
+        self.inner_player.end(state, reward)
+
+    def get_freezed(self):
+        raise NotImplementedError()

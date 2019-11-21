@@ -1,19 +1,26 @@
+from quarto.base_player import OpponentWrapper
 
 
-def train(env, player, train_episodes=10000, eval_episodes=1000, cycles=10, on_cycle_end=None):
+def train(env, player, train_episodes=10000, eval_episodes=1000, cycles=10, on_cycle_end=None, opponent_epsilon=0.1, eval_player=None):
     """
     Train the given player against it self
     """
+    adversary = OpponentWrapper(player.get_freezed(), opponent_epsilon)
     for cycle in range(cycles):
-        adversary = player.get_freezed()
         player.save()
 
         # Train player against a fixed adversary
         train_score = run_duel(env, player, adversary, train_episodes)
 
         # Eval the newly trained player against the fixed adversary
-        new_adversary = player.get_freezed()
-        eval_score = run_duel(env, new_adversary, adversary, eval_episodes)
+        new_adversary = OpponentWrapper(player.get_freezed(), opponent_epsilon)
+        eval_score = run_duel(
+            env,
+            new_adversary.inner_player,
+            adversary.inner_player if eval_player is None else eval_player,
+            eval_episodes)
+
+        adversary = new_adversary
 
         print(
             f'Cycle {cycle+1}/{cycles}: avg train score = {train_score}, avg eval score = {eval_score}')
