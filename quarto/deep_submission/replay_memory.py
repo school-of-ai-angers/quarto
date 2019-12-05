@@ -10,11 +10,10 @@ class ReplayMemory:
     """
 
     def __init__(self, memory_size):
-        # A wrapping list of tuples like: (state, action, reward, next_state, done)
         self.memory = deque(maxlen=memory_size)
 
-    def append(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+    def append(self, state, action, reward, next_state, valid_actions):
+        self.memory.append((state, action, reward, next_state, valid_actions))
 
     def sample(self, batch_size):
         """Randomly sample a batch of experiences from memory."""
@@ -25,9 +24,10 @@ class ReplayMemory:
         actions = torch.Tensor([exp[1] for exp in experiences]).long()
         rewards = torch.Tensor([exp[2] for exp in experiences]).float()
         next_states = torch.stack([exp[3] for exp in experiences]).float()
-        dones = torch.Tensor([exp[4] for exp in experiences]).float()
 
-        return states, actions, rewards, next_states, dones
+        valid_actions = list([exp[4] for exp in experiences])
+
+        return states, actions, rewards, next_states, valid_actions
 
     def __len__(self):
         """Return the current size of internal memory."""
