@@ -10,22 +10,23 @@ import numpy as np
 class DeepQAgent:
     def __init__(self,
                  state_size, action_size, hidden_1_size, hidden_2_size,
-                 encode_state_fn,
+                 encode_state_fn, decode_action_values_fn,
                  memory_size=int(1e5),
                  warm_up=int(1e4),
                  batch_size=64,
                  train_every=16,
                  epsilon=1, min_epsilon=0.1, epsilon_decay=0.99999,
                  tau=1e-4, gamma=1,
-                 lr=1e-5):
+                 lr=1e-5, gradient_clip=1):
         # Local Q-network => used to play and directly trained
         self.state_size = state_size
         self.action_size = action_size
         self.hidden_1_size = hidden_1_size
         self.hidden_2_size = hidden_2_size
         self.qnetwork_local = QNetwork(state_size, action_size, hidden_1_size, hidden_2_size)
-        self.loss = nn.MSELoss()
+        self.loss = nn.SmoothL1Loss()
         self.optimizer = torch.optim.Adam(self.qnetwork_local.parameters(), lr=lr)
+        self.gradient_clip = gradient_clip
 
         # Target Q-network => softly trained
         self.qnetwork_target = QNetwork(state_size, action_size, hidden_1_size, hidden_2_size)
@@ -47,6 +48,7 @@ class DeepQAgent:
         self.memory = ReplayMemory(memory_size)
         self.step_count = 0
         self.encode_state_fn = encode_state_fn
+        self.decode_action_values_fn = decode_action_values_fn
         self.train_every = train_every
         self.prev_action = None
         self.prev_state = None
@@ -79,7 +81,7 @@ class DeepQAgent:
             # Chose the action with the highest Q-value estimated by the local network
             self.qnetwork_local.eval()
             with torch.no_grad():
-                action_values = self.qnetwork_local(state.unsqueeze(0)).numpy()[0]
+                action_values = self.decode_action_values_fn(self.qnetwork_local(state.unsqueeze(0)))[0]
             self.qnetwork_local.train()
             valid_action_values = action_values[valid_actions]
             return valid_actions[np.argmax(valid_action_values)]
@@ -95,21 +97,22 @@ class DeepQAgent:
 
             # Calculate max_a(Q) for all samples using the target network
             with torch.no_grad():
-                next_action_values = self.qnetwork_target(next_states)
+                next_action_values = self.decode_action_values_fn(self.qnetwork_target(next_states))
                 next_state_values = torch.Tensor([
-                    0. if va is None else np.max(nav[va])
-                    for nav, va in zip(next_action_values.numpy(), valid_actions)
+                    0. if va is None else torch.max(nav[va])
+                    for nav, va in zip(next_action_values, valid_actions)
                 ])
 
             # Calculate target values
             returns = rewards + self.gamma * next_state_values
 
             # Optimize
-            all_action_values = self.qnetwork_local(states)
+            all_action_values = self.decode_action_values_fn(self.qnetwork_local(states))
             values = all_action_values.gather(1, actions.unsqueeze(-1)).squeeze()
             loss = self.loss(values, returns)
             self.optimizer.zero_grad()
             loss.backward()
+            nn.utils.clip_grad_norm_(self.qnetwork_local.parameters(), self.gradient_clip)
             self.optimizer.step()
 
             # Do a soft update of the weights in the target network
@@ -125,7 +128,8 @@ class DeepQAgent:
         return TrainedDQAgent(
             self.state_size, self.action_size,
             self.hidden_1_size, self.hidden_2_size,
-            self.qnetwork_local.state_dict(), self.encode_state_fn)
+            self.qnetwork_local.state_dict(),
+            self.encode_state_fn, self.decode_action_values_fn)
 
     def save(self):
         # Save the q-table on the disk for future use
