@@ -23,7 +23,10 @@ player = DeepQAgent(state_size=16*17, action_size=16*16,
 
 
 def on_cycle_end(cycle):
-    print(f'epsilon={player.epsilon}')
+    avg_loss = 0 if player.trains == 0 else player.total_loss / player.trains
+    print(f'epsilon={player.epsilon:.3f}, memory={len(player.memory)}, trains={player.trains}, avg_loss={avg_loss:.1f}')
+    player.trains = 0
+    player.total_loss = 0
 
 
-train(env, player, train_episodes=1000, on_cycle_end=on_cycle_end, cycles=1000, eval_player=RandomPlayer(False))
+train(env, player, train_episodes=2000, on_cycle_end=on_cycle_end, cycles=1000, eval_player=RandomPlayer(False))

@@ -12,11 +12,12 @@ class DeepQAgent:
                  state_size, action_size, hidden_1_size, hidden_2_size,
                  encode_state_fn,
                  memory_size=int(1e5),
-                 batch_size=128,
-                 train_every=5,
-                 epsilon=1, min_epsilon=0.1, epsilon_decay=0.9999,
-                 tau=1e-3, gamma=1,
-                 lr=1e-4):
+                 warm_up=int(1e4),
+                 batch_size=64,
+                 train_every=16,
+                 epsilon=1, min_epsilon=0.1, epsilon_decay=0.99999,
+                 tau=1e-4, gamma=1,
+                 lr=1e-5):
         # Local Q-network => used to play and directly trained
         self.state_size = state_size
         self.action_size = action_size
@@ -41,12 +42,16 @@ class DeepQAgent:
         self.gamma = gamma
 
         self.batch_size = batch_size
+        self.warm_up = warm_up
+        self.memory_size = memory_size
         self.memory = ReplayMemory(memory_size)
         self.step_count = 0
         self.encode_state_fn = encode_state_fn
         self.train_every = train_every
         self.prev_action = None
         self.prev_state = None
+        self.trains = 0
+        self.total_loss = 0
 
     def start(self, state, valid_actions):
         state = self.encode_state_fn(state)
@@ -85,7 +90,7 @@ class DeepQAgent:
 
         # Check if will learn from a batch
         self.step_count += 1
-        if self.step_count % self.train_every == 0 and len(self.memory) >= self.batch_size:
+        if self.step_count % self.train_every == 0 and len(self.memory) >= self.warm_up:
             states, actions, rewards, next_states, valid_actions = self.memory.sample(self.batch_size)
 
             # Calculate max_a(Q) for all samples using the target network
@@ -111,8 +116,8 @@ class DeepQAgent:
             for target_param, local_param in zip(self.qnetwork_target.parameters(), self.qnetwork_local.parameters()):
                 target_param.data.copy_(self.tau*local_param.data + (1.0-self.tau)*target_param.data)
 
-            if (self.step_count / self.train_every) % 100 == 0:
-                print(f'loss = {loss}')
+            self.trains += 1
+            self.total_loss += float(loss)
 
     def get_freezed(self):
         # Return a copy of the player, but not in train_mode
