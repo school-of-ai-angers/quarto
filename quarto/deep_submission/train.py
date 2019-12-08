@@ -75,8 +75,6 @@ if __name__ == "__main__":
     def on_cycle_end(cycle, train_score, eval_score):
         avg_loss = 0 if player.trains == 0 else player.total_loss / player.trains
         print(f'epsilon={player.epsilon:.3f}, memory={len(player.memory)}, trains={player.trains}, avg_loss={avg_loss:.1f}')
-        player.trains = 0
-        player.total_loss = 0
         duration = (time.time() - start_time) / 60
         rows.append({
             'cycle': cycle,
@@ -89,9 +87,12 @@ if __name__ == "__main__":
             'duration': duration
         })
 
+        player.trains = 0
+        player.total_loss = 0
         if args.max_minutes and duration > args.max_minutes:
             return True
 
     train(env, player, train_episodes=2000, on_cycle_end=on_cycle_end, cycles=1000, eval_player=RandomPlayer(False))
 
     pd.DataFrame(rows).to_parquet(f'{player.player_dir}/stats.parquet')
+    print('-- Finished --')
