@@ -17,38 +17,47 @@ params = {
     'warm_up': [int(1e2), int(1e3), int(1e4)],
     'batch_size': [32, 64, 128],
     'train_every': [4, 8, 16],
-    'epsilon': [0.8, 0.9, 1],
-    'min_epsilon': [0.05, 0.1, 0.15],
+    'epsilon': [0.85, 0.9, 0.95],
+    'min_epsilon': [0.025, 0.05, 0.1],
     'epsilon_decay': [0.99995, 0.99999, 0.999995],
     'tau': [1e-3, 1e-4, 1e-5],
     'gamma': [0.9, 0.99, 1],
-    'lr': [1e-4, 1e-5, 1e-6],
+    'lr': [1e-5, 1e-6, 5e-7],
     'gradient_clip': [0.3, 1, 3],
     'hidden_size': [128, 256, 512],
 }
 
-max_minutes = 60
-num = 10
-commit = 'dfbb67ddf958889cc9d652cf338e98af8a2f9a39'
+max_minutes = 90
+num = 20
+per_droplet = 2
+commit = '4af55e5a4ccba9d98649fdd244186a5ba56059bc'
 
+commands = []
 for i in range(num):
     concrete_params = {
         'max_minutes': max_minutes,
-        'name': f'player-{i:02d}'
+        'name': f'player2-{i:02d}'
     }
     for key, values in params.items():
         concrete_params[key] = random.choice(values)
 
     command_args = ' '.join(f'--{key} {value}' for key, value in concrete_params.items())
-    command = f'-m quarto.deep_submission.train {command_args} &>log.log'
+    command = f'-m quarto.deep_submission.train {command_args} &>{concrete_params["name"]}.log'
+    commands.append(command)
 
-    droplet_name = 'quarto-train-' + concrete_params['name']
+for i in range(int(num / per_droplet)):
+    droplet_commands = '\n'.join(
+        f'docker run -v "$PWD/weights:/app/weights" quarto {command}'
+        for command in commands[i * per_droplet:(i+1)*per_droplet]
+    )
+
+    droplet_name = f'quarto-train-{i:02d}'
     user_data = f'''#!/bin/bash -e
     cd /root/quarto
     git fetch
     git checkout --force {commit}
     docker build -t quarto -f quarto/deep_submission/Dockerfile .
-    docker run -v "$PWD/weights:/app/weights" quarto {command}
+    {droplet_commands}
     '''
     droplet = digitalocean.Droplet(
         token=token,
