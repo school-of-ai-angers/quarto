@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from .deep_q_agent import DeepQAgent
 import torch
@@ -68,6 +69,8 @@ if __name__ == "__main__":
                         gamma=args.gamma,
                         lr=args.lr,
                         gradient_clip=args.gradient_clip)
+    with open(f'{player.player_dir}/meta.json', 'w') as fp:
+        json.dump(args.__dict__, fp)
 
     rows = []
     start_time = time.time()
