@@ -5,3 +5,4 @@ __pycache__
 *.bin
 submission.zip
 weights
+.env

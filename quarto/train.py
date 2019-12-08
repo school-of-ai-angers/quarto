@@ -26,7 +26,11 @@ def train(env, player, train_episodes=10000, eval_episodes=1000, cycles=10, on_c
             f'Cycle {cycle+1}/{cycles}: avg train score = {train_score}, avg eval score = {eval_score}')
 
         if on_cycle_end:
-            on_cycle_end(cycle)
+            should_stop = on_cycle_end(cycle, train_score, eval_score)
+            if should_stop:
+                break
+
+    player.save()
 
 
 def run_duel(env, player1, player2, episodes):

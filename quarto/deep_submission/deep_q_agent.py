@@ -5,12 +5,15 @@ from .replay_memory import ReplayMemory
 from .trained_d_q_agent import TrainedDQAgent
 import random
 import numpy as np
+import os
+import shutil
 
 
 class DeepQAgent:
     def __init__(self,
                  state_size, action_size, hidden_1_size, hidden_2_size,
                  encode_state_fn, decode_action_values_fn,
+                 name='player',
                  memory_size=int(1e5),
                  warm_up=int(1e4),
                  batch_size=64,
@@ -42,6 +45,7 @@ class DeepQAgent:
         self.tau = tau
         self.gamma = gamma
 
+        self.name = name
         self.batch_size = batch_size
         self.warm_up = warm_up
         self.memory_size = memory_size
@@ -54,6 +58,11 @@ class DeepQAgent:
         self.prev_state = None
         self.trains = 0
         self.total_loss = 0
+
+        self.player_dir = f'weights/{self.name}'
+        if os.path.exists(self.player_dir):
+            shutil.rmtree(self.player_dir)
+        os.makedirs(self.player_dir)
 
     def start(self, state, valid_actions):
         state = self.encode_state_fn(state)
@@ -133,4 +142,4 @@ class DeepQAgent:
 
     def save(self):
         # Save the q-table on the disk for future use
-        torch.save(self.qnetwork_local.state_dict(), f'weights/dq-player-{self.step_count}.pth')
+        torch.save(self.qnetwork_local.state_dict(), f'{self.player_dir}/dq-player-{self.step_count}.pth')

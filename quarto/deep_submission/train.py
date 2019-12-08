@@ -4,6 +4,9 @@ import torch
 from quarto.environment import Environment
 from quarto.train import train
 from quarto.base_player import RandomPlayer
+import argparse
+import time
+import pandas as pd
 
 env = Environment()
 
@@ -31,16 +34,64 @@ def decode_action_values(encoded_action_values):
     return positions.matmul(pieces).reshape((-1, 256))
 
 
-player = DeepQAgent(state_size=16*17, action_size=16+16,
-                    hidden_1_size=512, hidden_2_size=512,
-                    encode_state_fn=encode_state, decode_action_values_fn=decode_action_values)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--memory_size', default=int(1e5), type=int)
+    parser.add_argument('--warm_up', default=int(1e4), type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--train_every', default=16, type=int)
+    parser.add_argument('--epsilon', default=1, type=float)
+    parser.add_argument('--min_epsilon', default=0.1, type=float)
+    parser.add_argument('--epsilon_decay', default=0.99999, type=float)
+    parser.add_argument('--tau', default=1e-4, type=float)
+    parser.add_argument('--gamma', default=1, type=float)
+    parser.add_argument('--lr', default=1e-5, type=float)
+    parser.add_argument('--gradient_clip', default=1, type=float)
+    parser.add_argument('--hidden_size', default=256, type=int)
+    parser.add_argument('--max_minutes', default=0, type=float)
+    parser.add_argument('--name', default='player', type=str)
+    args = parser.parse_args()
+    print(args)
 
+    player = DeepQAgent(state_size=16*17, action_size=16+16,
+                        hidden_1_size=args.hidden_size, hidden_2_size=args.hidden_size,
+                        encode_state_fn=encode_state, decode_action_values_fn=decode_action_values,
+                        name=args.name,
+                        memory_size=args.memory_size,
+                        warm_up=args.warm_up,
+                        batch_size=args.batch_size,
+                        train_every=args.train_every,
+                        epsilon=args.epsilon,
+                        min_epsilon=args.min_epsilon,
+                        epsilon_decay=args.epsilon_decay,
+                        tau=args.tau,
+                        gamma=args.gamma,
+                        lr=args.lr,
+                        gradient_clip=args.gradient_clip)
 
-def on_cycle_end(cycle):
-    avg_loss = 0 if player.trains == 0 else player.total_loss / player.trains
-    print(f'epsilon={player.epsilon:.3f}, memory={len(player.memory)}, trains={player.trains}, avg_loss={avg_loss:.1f}')
-    player.trains = 0
-    player.total_loss = 0
+    rows = []
+    start_time = time.time()
 
+    def on_cycle_end(cycle, train_score, eval_score):
+        avg_loss = 0 if player.trains == 0 else player.total_loss / player.trains
+        print(f'epsilon={player.epsilon:.3f}, memory={len(player.memory)}, trains={player.trains}, avg_loss={avg_loss:.1f}')
+        player.trains = 0
+        player.total_loss = 0
+        duration = (time.time() - start_time) / 60
+        rows.append({
+            'cycle': cycle,
+            'train_score': train_score,
+            'eval_score': eval_score,
+            'avg_loss': avg_loss,
+            'trains': player.trains,
+            'epsilon': player.epsilon,
+            'memory': len(player.memory),
+            'duration': duration
+        })
 
-train(env, player, train_episodes=2000, on_cycle_end=on_cycle_end, cycles=1000, eval_player=RandomPlayer(False))
+        if args.max_minutes and duration > args.max_minutes:
+            return True
+
+    train(env, player, train_episodes=2000, on_cycle_end=on_cycle_end, cycles=1000, eval_player=RandomPlayer(False))
+
+    pd.DataFrame(rows).to_parquet(f'{player.player_dir}/stats.parquet')
