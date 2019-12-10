@@ -2,7 +2,8 @@ __pycache__
 .pytest_cache
 .vscode
 .ipynb_checkpoints
-*.bin
+**/*.bin
 submission.zip
 weights
-.env
+.git
+*.ipynb
